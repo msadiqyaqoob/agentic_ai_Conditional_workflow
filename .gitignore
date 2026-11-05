@@ -1,0 +1,92 @@
+
+# ==============================
+# ENVIRONMENT VARIABLES / SECRETS
+# ==============================
+.env
+.env.*
+!.env.example
+
+.streamlit/secrets.toml
+secrets.toml
+
+# API keys and credentials
+*credentials*
+*secret*
+*token*
+*api_key*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ==============================
+# PYTHON VIRTUAL ENVIRONMENTS
+# ==============================
+.venv/
+venv/
+env/
+ENV/
+
+# ==============================
+# PYTHON CACHE
+# ==============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ==============================
+# JUPYTER
+# ==============================
+.ipynb_checkpoints/
+
+# ==============================
+# IDE / EDITORS
+# ==============================
+.vscode/
+.idea/
+
+# ==============================
+# SYSTEM FILES
+# ==============================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==============================
+# LOGS
+# ==============================
+*.log
+
+# ==============================
+# DATABASES
+# ==============================
+*.db
+*.sqlite
+*.sqlite3
+
+# ==============================
+# VECTOR DATABASES
+# ==============================
+faiss_index/
+vector_db/
+chroma_db/
+qdrant_db/
+
+# ==============================
+# MODEL / CACHE FILES
+# ==============================
+.cache/
+huggingface_cache/
+*.safetensors
+
+# ==============================
+# GENERATED FILES
+# ==============================
+downloads/
+temp/
+tmp/
+
+state.py
+sequential_workflow.py
+parallel_red.py
