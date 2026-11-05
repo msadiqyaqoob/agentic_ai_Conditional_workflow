@@ -1,29 +1,23 @@
 
 import os
 from typing import TypedDict, Annotated
-
 from dotenv import load_dotenv
-
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AnyMessage
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, START, END
-import streamlit as st
-import uuid
 from langgraph.checkpoint.memory import MemorySaver
 
 load_dotenv()
 
 
 # --------------------------------
-# 1. LLM
+# 1. LLM — Same OpenRouter Model
 # --------------------------------
-
 llm = ChatOpenAI(
     model=os.getenv("OPENROUTER_MODEL"),
     api_key=os.getenv("OPENROUTER_API_KEY"),
@@ -36,7 +30,6 @@ llm = ChatOpenAI(
 # --------------------------------
 # 2. Embeddings
 # --------------------------------
-
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
@@ -45,11 +38,9 @@ embeddings = HuggingFaceEmbeddings(
 # --------------------------------
 # 3. PDF Retriever Function
 # --------------------------------
-
 def build_retriever(pdf_path: str):
 
     loader = PyPDFLoader(pdf_path)
-
     documents = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
@@ -81,7 +72,6 @@ fee_retriever = build_retriever("fee_structure.pdf")
 # --------------------------------
 # 4. Define Graph State
 # --------------------------------
-
 class CollegeState(TypedDict):
 
     programme: str
@@ -96,7 +86,6 @@ class CollegeState(TypedDict):
 # --------------------------------
 # 5. Classifier Node
 # --------------------------------
-
 def classifier_node(state: CollegeState) -> dict:
 
     last_message = state["messages"][-1].content
@@ -142,7 +131,6 @@ def classifier_node(state: CollegeState) -> dict:
 # --------------------------------
 # 6. Academic RAG Node
 # --------------------------------
-
 def academic_rag_node(state: CollegeState) -> dict:
 
     query = state["messages"][-1].content
@@ -159,7 +147,6 @@ def academic_rag_node(state: CollegeState) -> dict:
 # --------------------------------
 # 7. Fee RAG Node
 # --------------------------------
-
 def fee_rag_node(state: CollegeState) -> dict:
 
     query = state["messages"][-1].content
@@ -176,7 +163,6 @@ def fee_rag_node(state: CollegeState) -> dict:
 # --------------------------------
 # 8. General Node
 # --------------------------------
-
 def general_node(state: CollegeState) -> dict:
 
     return {
@@ -187,7 +173,6 @@ def general_node(state: CollegeState) -> dict:
 # --------------------------------
 # 9. Response Node
 # --------------------------------
-
 def response_node(state: CollegeState) -> dict:
 
     query = state["messages"][-1].content
@@ -242,7 +227,6 @@ def response_node(state: CollegeState) -> dict:
 # --------------------------------
 # 10. Conditional Routing
 # --------------------------------
-
 def route_query(state: CollegeState):
 
     if state["query_type"] == "academic":
@@ -261,7 +245,6 @@ def route_query(state: CollegeState):
 # --------------------------------
 # 11. Build Graph
 # --------------------------------
-
 graph = StateGraph(CollegeState)
 
 
@@ -303,182 +286,9 @@ graph.add_edge("general", "response")
 graph.add_edge("response", END)
 
 
-# Compile graph
-
+# --------------------------------
+# 12. Compile Graph with Memory
+# --------------------------------
 memory = MemorySaver()
 
-app =graph.compile(checkpointer=memory)
-
-
-# --------------------------------
-# 12. User Interface
-# --------------------------------
-
-
-# --------------------------------
-# 12. STREAMLIT UI
-# --------------------------------
-
-st.set_page_config(
-    page_title="College AI Assistant",
-    page_icon="🎓",
-    layout="centered"
-)
-
-# Initialize session state
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-if "thread_id" not in st.session_state:
-    st.session_state.thread_id = str(uuid.uuid4())
-
-
-# Custom CSS
-
-st.markdown("""
-<style>
-    .main-title {
-        text-align: center;
-        font-size: 32px;
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-
-    .subtitle {
-        text-align: center;
-        color: gray;
-        margin-bottom: 25px;
-    }
-
-    [data-testid="stChatMessage"] {
-        border-radius: 12px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-
-# Sidebar
-
-with st.sidebar:
-
-    st.title("🎓 College Assistant")
-
-    st.write("Your AI-powered college help desk.")
-
-    st.divider()
-
-    st.subheader("Student Information")
-
-    student_programme = st.selectbox(
-        "Select your programme",
-        ["BCA", "BBA", "B.Com (H)"]
-    )
-
-    st.divider()
-
-    st.subheader("Chat Settings")
-
-    if st.button("🗑️ Clear Chat", use_container_width=True):
-
-        st.session_state.chat_history = []
-
-        # Create a new conversation thread
-        st.session_state.thread_id = str(uuid.uuid4())
-
-        st.rerun()
-
-    st.divider()
-
-    st.caption("Powered by LangGraph + LangChain + OpenRouter")
-
-
-# Main UI
-
-st.markdown(
-    '<div class="main-title">🎓 College AI Assistant</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    '<div class="subtitle">Ask anything about academics, fees and college rules.</div>',
-    unsafe_allow_html=True
-)
-
-
-# Welcome message
-
-if not st.session_state.chat_history:
-
-    st.info(
-        f"Welcome! You are currently registered as a "
-        f"**{student_programme}** student. How can I help you today?"
-    )
-
-
-# Display previous chat messages
-
-for message in st.session_state.chat_history:
-
-    with st.chat_message(message["role"]):
-
-        st.markdown(message["content"])
-
-
-# Chat input
-
-user_query = st.chat_input(
-    "Ask your question about college..."
-)
-
-
-if user_query:
-
-    # Display user message
-
-    st.session_state.chat_history.append({
-        "role": "user",
-        "content": user_query
-    })
-
-    with st.chat_message("user"):
-        st.markdown(user_query)
-
-
-    # Get response from LangGraph
-
-    with st.chat_message("assistant"):
-
-        with st.spinner("Thinking..."):
-
-            try:
-
-                result = app.invoke(
-
-                    {
-                        "programme": student_programme,
-
-                        "messages": [
-                            ("human", user_query)
-                        ]
-                    },
-
-                    config={
-                        "configurable": {
-                            "thread_id": st.session_state.thread_id
-                        }
-                    }
-                )
-
-                answer = result["messages"][-1].content
-
-                st.markdown(answer)
-
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": answer
-                })
-
-            except Exception as e:
-
-                st.error(f"Something went wrong: {str(e)}")
+app = graph.compile(checkpointer=memory)
